@@ -16,6 +16,8 @@ Instructions:
 """
 
 from typing import Dict, List
+import re
+from collections import defaultdict, Counter
 import string
 
 
@@ -55,7 +57,11 @@ def extract_bag_of_words(text: str) -> Dict[str, int]:
     # Step 5: Return dictionary
     
     # For now, return empty dictionary until implemented
-    return {}
+
+
+    words = re.findall(r'\b\w+\b', text.lower())
+    vocab = Counter(words)
+    return dict(sorted(vocab.items()))
 
 
 def build_vocabulary(texts: List[str]) -> Dict[str, int]:
@@ -93,7 +99,12 @@ def build_vocabulary(texts: List[str]) -> Dict[str, int]:
     # Step 5: Return word-to-index dictionary
     
     # For now, return empty dictionary until implemented
-    return {}
+
+    all_words = set()
+    for text in texts:
+        all_words.update(extract_bag_of_words(text).keys())
+
+    return {word: idx for idx, word in enumerate(sorted(all_words))}
 
 
 def text_to_vector(text: str, vocab: Dict[str, int]) -> List[int]:
@@ -136,4 +147,7 @@ def text_to_vector(text: str, vocab: Dict[str, int]) -> List[int]:
     # Step 4: Return feature vector
     
     # For now, return empty list until implemented
-    return []
+
+    bow = extract_bag_of_words(text)
+    return [bow.get(word, 0) for word in sorted(vocab, key=vocab.get)]
+

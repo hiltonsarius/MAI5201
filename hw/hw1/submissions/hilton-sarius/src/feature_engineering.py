@@ -16,8 +16,10 @@ Instructions:
 - Do not modify function signatures
 """
 
+import math
+from collections import Counter
 from typing import Dict, List, Tuple, Set
-import string
+import string, re
 from text_features import extract_bag_of_words, build_vocabulary, text_to_vector
 
 
@@ -58,8 +60,17 @@ def add_ngram_features(texts: List[str], n: int = 2) -> Dict[str, int]:
     # Step 4: Return combined vocabulary
     
     # For now, return empty dictionary until implemented
-    return {}
 
+
+    grams = {
+        ' '.join(words[i:i + size])
+        for text in texts
+        for words in [re.findall(r'\b\w+\b', text.lower())]
+        for size in range(1, n + 1)
+        for i in range(len(words) - size + 1)
+    }
+
+    return {gram: idx for idx, gram in enumerate(sorted(grams))}
 
 def compute_tf_idf_features(texts: List[str], vocab: Dict[str, int]) -> List[List[float]]:
     """
@@ -105,7 +116,38 @@ def compute_tf_idf_features(texts: List[str], vocab: Dict[str, int]) -> List[Lis
     # Step 4: Return list of TF-IDF vectors
     
     # For now, return empty list until implemented
-    return []
+
+    total_docs = len(texts)
+    if total_docs == 0 or not vocab:
+        return []
+
+    # Step 1: Compute word counts and document lengths
+    doc_word_counts = [extract_bag_of_words(text) for text in texts]
+    doc_lengths = [sum(counts.values()) for counts in doc_word_counts]
+
+    # Step 2: Compute document frequency
+    doc_freq = Counter()
+    for word_count in doc_word_counts:
+        for word in word_count:
+            if word in vocab:
+                doc_freq[word] += 1
+
+    # Step 3: Compute IDF scores
+    idf_scores = {
+        word: math.log(total_docs / (doc_freq[word] + 1))
+        for word in vocab
+    }
+
+    # Step 4: Compute TF-IDF vectors
+    tf_idf_vectors = [
+        [
+            (word_count.get(word, 0) / length) * idf_scores[word] if length > 0 else 0.0
+            for word in sorted(vocab, key=vocab.get)
+        ]
+        for word_count, length in zip(doc_word_counts, doc_lengths)
+    ]
+
+    return tf_idf_vectors
 
 
 def extract_feature_statistics(texts: List[str]) -> List[Dict[str, float]]:
@@ -154,7 +196,31 @@ def extract_feature_statistics(texts: List[str]) -> List[Dict[str, float]]:
     # Step 4: Return feature dictionaries
     
     # For now, return empty list until implemented
-    return []
+
+    def compute_features(text):
+        clean_words = re.findall(r'\b\w+\b', text.lower())
+        total_word_count = len(clean_words)
+        char_count = sum(len(word) for word in clean_words)
+        sentence_count = sum(text.count(p) for p in '.!?')
+        avg_word_length = char_count / total_word_count if total_word_count else 0
+        unique_words = len(set(clean_words))
+        vocab_diversity = unique_words / total_word_count if total_word_count else 0
+        exclamation_count = text.count('!')
+        question_count = text.count('?')
+        uppercase_ratio = sum(1 for c in text if c.isupper()) / len(text) if text else 0
+
+        return {
+            'word_count': total_word_count,
+            'char_count': char_count,
+            'sentence_count': sentence_count,
+            'avg_word_length': avg_word_length,
+            'vocab_diversity': vocab_diversity,
+            'exclamation_count': exclamation_count,
+            'question_count': question_count,
+            'uppercase_ratio': uppercase_ratio
+        }
+
+    return [compute_features(text) for text in texts]
 
 
 def build_feature_matrix(texts: List[str], feature_config: Dict[str, bool]) -> Tuple[List[List[float]], List[str]]:
@@ -206,4 +272,65 @@ def build_feature_matrix(texts: List[str], feature_config: Dict[str, bool]) -> T
     # Step 5: Return matrix and names
     
     # For now, return empty results until implemented
-    return [], []
+
+    # Step 1: Configuration defaults
+    config = {
+        'use_unigrams': feature_config.get('use_unigrams', True),
+        'use_bigrams': feature_config.get('use_bigrams', True),
+        'use_tfidf': feature_config.get('use_tfidf', True),
+        'use_statistics': feature_config.get('use_statistics', True)
+    }
+
+    if not texts:
+        return [], []
+
+    # Step 2: Determine n-gram size
+    max_n = 2 if config['use_bigrams'] else 1 if config['use_unigrams'] else 0
+
+    # Step 3: Build vocabulary
+    vocab = add_ngram_features(texts, n=max_n) if max_n > 0 else {}
+
+    # Step 4: Generate base vectors
+    if config['use_tfidf'] and vocab:
+        base_vectors = compute_tf_idf_features(texts, vocab)
+    elif vocab:
+        base_vectors = []
+        for text in texts:
+            words = re.findall(r'\b\w+\b', text.lower())
+            ngrams = set()
+
+            if config['use_unigrams']:
+                ngrams.update(words)
+            if config['use_bigrams']:
+                ngrams.update(f"{words[i]} {words[i+1]}" for i in range(len(words) - 1))
+
+            vector = [1.0 if ngram in ngrams else 0.0 for ngram in sorted(vocab, key=vocab.get)]
+            base_vectors.append(vector)
+    else:
+        base_vectors = [[] for _ in texts]
+
+    # Step 5: Generate statistical features
+    stat_vectors, stat_names = [], []
+    if config['use_statistics']:
+        stat_features = extract_feature_statistics(texts)
+        stat_names = [
+            'word_count', 'char_count', 'sentence_count', 'avg_word_length',
+            'vocab_diversity', 'exclamation_count', 'question_count', 'uppercase_ratio'
+        ]
+        stat_vectors = [[stat_dict[name] for name in stat_names] for stat_dict in stat_features]
+    else:
+        stat_vectors = [[] for _ in texts]
+
+    # Step 6: Combine features
+    final_matrix = [
+        base_vectors[i] + stat_vectors[i]
+        for i in range(len(texts))
+    ]
+
+    # Step 7: Combine feature names
+    feature_names = []
+    if vocab:
+        feature_names.extend([ngram for ngram, _ in sorted(vocab.items(), key=lambda x: x[1])])
+    feature_names.extend(stat_names)
+
+    return final_matrix, feature_names
