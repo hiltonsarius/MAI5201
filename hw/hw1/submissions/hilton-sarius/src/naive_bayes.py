@@ -55,8 +55,14 @@ def calculate_class_priors(labels: List[int]) -> Dict[int, float]:
     # Step 4: Return dictionary mapping class -> probability
     
     # For now, return empty dictionary until implemented
-    return {}
 
+    if not labels:
+        return {}
+    
+    class_counts = Counter(labels)
+    total_count = len(labels)
+    
+    return {label: count / total_count for label, count in class_counts.items()}
 
 def calculate_feature_likelihoods(vectors: List[List[float]], labels: List[int]) -> Dict[int, List[float]]:
     """
@@ -103,8 +109,40 @@ def calculate_feature_likelihoods(vectors: List[List[float]], labels: List[int])
     # Step 5: Return dictionary mapping class -> feature probabilities
     
     # For now, return empty dictionary until implemented
-    return {}
+    
+    if not vectors or not labels or len(vectors) != len(labels):
+        return {}
 
+    num_features = len(vectors[0])
+    class_vectors = defaultdict(list)
+
+    for vector, label in zip(vectors, labels):
+        class_vectors[label].append(vector)
+
+    feature_likelihoods = {}
+    alpha = 1.0  # Laplace smoothing
+
+    for class_label, class_docs in class_vectors.items():
+        if not class_docs:
+            feature_likelihoods[class_label] = [0.0] * num_features
+            continue
+
+        # Sum features across all vectors for the class
+        feature_sum = [sum(features[i] for features in class_docs) for i in range(num_features)]
+
+        # Apply Laplace smoothing
+        smoothed_sum = [count + alpha for count in feature_sum]
+        total_count = sum(smoothed_sum)
+
+        # Normalize to get probabilities
+        if total_count > 0:
+            probabilities = [count / total_count for count in smoothed_sum]
+        else:
+            probabilities = [1.0 / num_features] * num_features
+
+        feature_likelihoods[class_label] = probabilities
+
+    return feature_likelihoods
 
 def naive_bayes_predict(vector: List[float], priors: Dict[int, float], 
                        likelihoods: Dict[int, List[float]]) -> Tuple[int, Dict[int, float]]:
@@ -152,7 +190,44 @@ def naive_bayes_predict(vector: List[float], priors: Dict[int, float],
     # Step 5: Return (predicted_class, all_probabilities)
     
     # For now, return dummy values until implemented
-    return 0, {}
+
+    if not vector or not priors or not likelihoods:
+        return 0, {}
+
+    log_probs = {}
+    for class_label, prior in priors.items():
+        class_likelihoods = likelihoods.get(class_label)
+        if not class_likelihoods:
+            continue
+
+        log_prob = math.log(prior) if prior > 0 else float('-inf')
+        for feature_value, feature_prob in zip(vector, class_likelihoods):
+            if feature_value > 0:
+                if feature_prob > 0:
+                    log_prob += feature_value * math.log(feature_prob)
+                else:
+                    log_prob = float('-inf')
+                    break
+        log_probs[class_label] = log_prob
+
+    if not log_probs:
+        return 0, {}
+
+    max_log = max(log_probs.values())
+    unnormalized = {
+        label: math.exp(log_prob - max_log) if log_prob != float('-inf') else 0.0
+        for label, log_prob in log_probs.items()
+    }
+
+    total = sum(unnormalized.values())
+    if total > 0:
+        normalized = {label: prob / total for label, prob in unnormalized.items()}
+    else:
+        num_classes = len(unnormalized)
+        normalized = {label: 1.0 / num_classes for label in unnormalized}
+
+    predicted = max(normalized, key=normalized.get)
+    return predicted, normalized
 
 
 def train_naive_bayes(vectors: List[List[float]], labels: List[int]) -> Tuple[Dict[int, float], Dict[int, List[float]]]:
