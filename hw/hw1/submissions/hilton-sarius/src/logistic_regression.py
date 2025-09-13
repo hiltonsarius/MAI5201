@@ -10,7 +10,7 @@ Your Name: [Your Name Here]
 
 import numpy as np
 from typing import List, Tuple
-
+from sklearn.metrics import precision_score, recall_score
 
 def sigmoid(z):
     """
@@ -35,8 +35,10 @@ def sigmoid(z):
     """
     # TODO: Implement sigmoid function
     # Hint: Use np.exp() and handle potential overflow with np.clip()
-    return 0.0
 
+    z = np.clip(z, -500, 500)
+    result = 1 / (1 + np.exp(-z))
+    return result if isinstance(z, np.ndarray) else float(result)
 
 def cross_entropy_loss(y_true, y_pred):
     """
@@ -65,7 +67,19 @@ def cross_entropy_loss(y_true, y_pred):
     # - Use np.log() for logarithm
     # - Add small epsilon (1e-15) to prevent log(0)
     # - Return the mean loss across all samples
-    return 0.0
+
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+
+    if y_true.shape != y_pred.shape:
+        raise ValueError("Shapes of y_true and y_pred must match.")
+
+    # Avoid log(0) by bounding predictions
+    y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
+
+    # Vectorized loss computation
+    loss = -(y_true * np.log(y_pred) + (1 - y_true) * np.log1p(-y_pred))
+    return np.mean(loss)
 
 
 def compute_gradients(X, y, weights):
@@ -100,7 +114,18 @@ def compute_gradients(X, y, weights):
     # 3. Compute error = predictions - y_true
     # 4. Compute gradients = X.T @ error / n_samples
     # 5. Return gradients as numpy array
-    return np.array([])
+
+    X = np.asarray(X)
+    y = np.asarray(y)
+    weights = np.asarray(weights)
+
+    if not X.size or not y.size or not weights.size:
+        return np.zeros_like(weights)
+
+    predictions = 1 / (1 + np.exp(-X @ weights))
+    gradients = X.T @ (predictions - y) / X.shape[0]
+    return gradients
+
 
 
 def sgd_step(weights, gradients, learning_rate):
@@ -133,8 +158,7 @@ def sgd_step(weights, gradients, learning_rate):
     # 1. Convert inputs to numpy arrays
     # 2. Apply the SGD update formula
     # 3. Return updated weights as numpy array
-    return np.array([])
-
+    return np.asarray(weights) - learning_rate * np.asarray(gradients)
 
 def train_logistic_regression(X, y, learning_rate=0.01, epochs=100):
     """
@@ -167,7 +191,21 @@ def train_logistic_regression(X, y, learning_rate=0.01, epochs=100):
     #    - Compute gradients using compute_gradients()
     #    - Update weights using sgd_step()
     # 4. Return final weights
-    return np.array([])
+
+    X = np.asarray(X)
+    y = np.asarray(y)
+
+    if not X.size or not y.size:
+        return np.array([])
+
+    weights = np.zeros(X.shape[1])
+
+    for epoch in range(epochs):
+        gradients = compute_gradients(X, y, weights)
+        weights = sgd_step(weights, gradients, learning_rate)
+
+    return weights
+
 
 
 def logistic_predict(X, weights, threshold=0.5):
@@ -201,7 +239,17 @@ def logistic_predict(X, weights, threshold=0.5):
     # 3. Compute probabilities using sigmoid(z)
     # 4. Apply threshold: predictions = probabilities >= threshold
     # 5. Convert to lists and return both predictions and probabilities
-    return ([], [])
+
+    X = np.asarray(X)
+    weights = np.asarray(weights)
+
+    if not X.size or not weights.size:
+        return [], []
+
+    probabilities = sigmoid(X @ weights)
+    predictions = (probabilities >= threshold).astype(int)
+
+    return predictions.tolist(), probabilities.tolist()
 
 
 def calculate_accuracy(y_true, y_pred):
@@ -232,7 +280,14 @@ def calculate_accuracy(y_true, y_pred):
     # 2. Count correct predictions: sum(y_true == y_pred)
     # 3. Divide by total predictions: len(y_true)
     # 4. Handle empty inputs
-    return 0.0
+
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+
+    if y_true.size == 0:
+        return 0.0
+
+    return np.mean(y_true == y_pred)
 
 
 def calculate_precision_recall(y_true, y_pred):
@@ -268,7 +323,17 @@ def calculate_precision_recall(y_true, y_pred):
     # 4. Calculate False Negatives: sum((y_true == 1) & (y_pred == 0))
     # 5. Calculate precision and recall using formulas
     # 6. Handle edge cases (division by zero)
-    return (0.0, 0.0)
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    if len(y_true) == 0:
+        return 0.0, 0.0
+
+    precision = precision_score(y_true, y_pred, zero_division=0)
+    recall = recall_score(y_true, y_pred, zero_division=0)
+
+    return float(precision), float(recall)
 
 
 def confusion_matrix(y_true, y_pred):
@@ -309,7 +374,23 @@ def confusion_matrix(y_true, y_pred):
     #    - FN = sum((y_true == 1) & (y_pred == 0))
     #    - TP = sum((y_true == 1) & (y_pred == 1))
     # 3. Return as dictionary
-    return {'TN': 0, 'FP': 0, 'FN': 0, 'TP': 0}
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    if y_true.shape != y_pred.shape:
+        raise ValueError("Shapes of y_true and y_pred must match.")
+    if len(y_true) == 0:
+        return {'TN': 0, 'FP': 0, 'FN': 0, 'TP': 0}
+
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+
+    return {
+        'TN': int(tn),
+        'FP': int(fp),
+        'FN': int(fn),
+        'TP': int(tp)
+    }
 
 
 def compare_models(nb_preds, lr_preds, y_true):
