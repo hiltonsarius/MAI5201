@@ -129,8 +129,22 @@ class MovieReviewClassifier:
             # 3. Store results in self.X_train, self.X_test
             
             # Placeholder
-            self.count_vectorizer = CountVectorizer()
-            pass
+
+            # Initialize CountVectorizer with desired parameters
+            self.count_vectorizer = CountVectorizer(
+                lowercase=True,
+                stop_words='english',
+                max_features=10000,
+                ngram_range=(1, 2)
+            )
+
+            # Safely retrieve training and testing text data
+            train_texts = getattr(self, 'train_texts', None) or getattr(self, 'X_train_text', None) or getattr(self, 'train_X', self.X_train)
+            test_texts = getattr(self, 'test_texts', None) or getattr(self, 'X_test_text', None) or getattr(self, 'test_X', self.X_test)
+
+            # Fit and transform the training data, transform the test data
+            self.X_train = self.count_vectorizer.fit_transform(train_texts)
+            self.X_test = self.count_vectorizer.transform(test_texts)
             
         elif feature_type == 'tfidf':
             # TODO: Implement TF-IDF feature extraction
@@ -139,12 +153,20 @@ class MovieReviewClassifier:
             # 3. Store results in self.X_train, self.X_test
             
             # Placeholder
-            self.tfidf_vectorizer = TfidfVectorizer()
-            pass
+            self.tfidf_vectorizer = TfidfVectorizer(
+                lowercase=True,
+                stop_words='english',
+                max_features=10000,
+                ngram_range=(1, 2)
+            )
+            
+            self.X_train = self.tfidf_vectorizer.fit_transform(self.texts_train)
+            self.X_test = self.tfidf_vectorizer.transform(self.texts_test)
             
         else:
             raise ValueError(f"Unknown feature type: {feature_type}")
-    
+        
+
     def train_naive_bayes(self) -> None:
         """
         Train a Naive Bayes classifier using scikit-learn.
@@ -158,7 +180,7 @@ class MovieReviewClassifier:
         # 3. Store trained model in self.nb_model
         
         self.nb_model = MultinomialNB()
-        # self.nb_model.fit(self.X_train, self.y_train)
+        self.nb_model.fit(self.X_train, self.y_train)
     
     def train_logistic_regression(self) -> None:
         """
@@ -172,8 +194,17 @@ class MovieReviewClassifier:
         # 3. Fit on self.X_train and self.y_train
         # 4. Store trained model in self.lr_model
         
-        self.lr_model = LogisticRegression(random_state=self.random_state)
-        # self.lr_model.fit(self.X_train, self.y_train)
+
+        # Initialize the model with parameters
+        self.lr_model = LogisticRegression(
+            random_state=getattr(self, 'random_state', 42),
+            max_iter=1000,
+            solver='liblinear'
+        )
+
+        # Fit the model to training data
+        self.lr_model.fit(self.X_train, self.y_train)
+   
     
     def evaluate_model(self, model, model_name: str) -> Dict[str, float]:
         """
@@ -193,7 +224,7 @@ class MovieReviewClassifier:
         # 4. Return metrics dictionary
         
         # Placeholder implementation
-        predictions = [0] * len(self.y_test)  # Dummy predictions
+        predictions = model.predict(self.X_test)
         
         accuracy = accuracy_score(self.y_test, predictions)
         precision, recall, f1, _ = precision_recall_fscore_support(
@@ -208,8 +239,7 @@ class MovieReviewClassifier:
         }
         
         self.results[model_name] = metrics
-        return metrics
-    
+        return metrics    
     def compare_models(self) -> Dict[str, Any]:
         """
         Compare the performance of Naive Bayes and Logistic Regression.
