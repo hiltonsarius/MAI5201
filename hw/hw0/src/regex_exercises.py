@@ -2,9 +2,9 @@
 MAI 5201 - Homework 0: Regular Expressions
 Part 1: Pattern Matching and Text Extraction
 
-Student Name: Feliciann Elliot
-Student ID: 1022055
-Date: July 31, 2025
+Student Name: [Your Name Here]
+Student ID: [Your ID Here]
+Date: [Date]
 
 Instructions:
 - Implement the functions below using regular expressions
@@ -40,9 +40,10 @@ def extract_emails(text: str) -> List[str]:
     # - With plus signs: user+tag@domain.com
     # - Various domain extensions: .com, .edu, .org, .co.uk, etc.
     
-    pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'  # Your regex pattern
-    emails = re.findall(pattern, text)
-    return emails
+    pattern = r''  # Your regex pattern here
+    # TODO: Replace the empty pattern above with your implementation
+    # For now, return empty list until implemented
+    return []
 
 
 def extract_urls(text: str) -> List[str]:
@@ -68,11 +69,10 @@ def extract_urls(text: str) -> List[str]:
     # - FTP: ftp://files.example.com
     # - With paths: https://example.com/path/to/page
     # - With query parameters: https://example.com/search?q=nlp
-
-
-    pattern = r'[a-zA-Z][a-zA-Z0-9+.-]*://[^\s\'",)>\]};]+'  # Your regex pattern
-    urls = re.findall(pattern, text)
-    return urls
+    
+    pattern = r''  # Your regex pattern here
+    # TODO: Replace empty pattern with your implementation
+    return []
 
 
 def extract_phone_numbers(text: str) -> List[str]:
@@ -100,30 +100,9 @@ def extract_phone_numbers(text: str) -> List[str]:
     # - +X-XXX-XXX-XXXX (international)
     # - +XXXXXXXXXX (international without separators)
     
-    # Pattern 1: International numbers with mixed separators (space, dash, dot)
-    international_flex = r'\+\d{1,3}(?:[-\s\.]\d{1,4}){2,6}'
-
-    # Pattern 2: Vanity numbers like 1-800-FLOWERS, 800-GO-FEDEX
-    vanity_pattern = r'(?:1-)?\d{3}(?:-[A-Za-z0-9]{2,}){1,3}'
-
-    # Pattern 3: Local numbers
-    local_patterns = [
-        r'\(\d{3}\)\s*\d{3}-\d{4}',         # (XXX) XXX-XXXX
-        r'\d{3}[.-]\d{3}[.-]\d{4}',         # XXX.XXX.XXXX or XXX-XXX-XXXX
-        r'\d{3}\s\d{3}\s\d{4}',             # XXX XXX XXXX
-    ]
-
-    # Combine all patterns into one big regex
-    combined_patterns = [international_flex, vanity_pattern] + local_patterns
-    pattern = r'|'.join(combined_patterns)
-
-    # Extract all matching phone-like patterns
-    matches = re.findall(pattern, text)
-
-    # re.findall returns strings (because we used non-capturing groups `(?:...)`)
-    phone_numbers = [match.strip() for match in matches if match]
-
-    return phone_numbers
+    pattern = r''  # Your regex pattern here
+    # TODO: Replace empty pattern with your implementation
+    return []
 
 
 def normalize_phone_number(phone: str) -> str:
@@ -154,56 +133,8 @@ def normalize_phone_number(phone: str) -> str:
     
     # TODO: Format the digits as +XXX-XXX-XXXX
     # Handle cases where country code might be missing
-
-    phone = phone.strip()
-
-    # Step 1: Remove extensions like "ext 123", "x456", "extension 789"
-    phone = re.sub(r'\b(?:ext|extension|x)\s*\d+\b', '', phone, flags=re.IGNORECASE)
-
-    # Step 2: Handle vanity numbers (contains letters)
-    if re.search(r'[A-Za-z]', phone):
-        # Add +1- prefix if it looks like a US-style vanity number
-        if re.match(r'^\d{3}-\w+', phone):  # e.g. 800-FLOWERS
-            return f'+1-{phone}'
-        if re.match(r'^1-\d{3}-\w+', phone):  # already has 1-800-FLOWERS
-            return f'+{phone.lstrip("+")}'  # ensure it's +1 not just 1
-        return phone  # fallback: can't normalize, return original
-
-    # Step 3: Special handling for Guyana: 592 XXX XXXX (with or without +)
-    digits = re.findall(r'\d', phone)
-    digits_str = ''.join(digits)
-
-    if digits_str.startswith('592') and len(digits_str) == 10:
-        return f'+592-{digits_str[3:6]}-{digits_str[6:]}'
-
-    # Step 4: Attempt to extract number-like chunks (e.g., +33, 1, 42, 86...)
-    groups = re.findall(r'\+?\d+', phone)
-
-    if not groups:
-        return phone  # No number-like groups detected
     
-    if(len(digits_str) == 11 and digits_str.startswith('1')):
-        return f'+1-{digits_str[1:4]}-{digits_str[4:7]}-{digits_str[7:]}'
-
-    # Step 5: If no +country code found, and digits = 10, assume US/Canada
-    if not any(g.startswith('+') for g in groups) and len(digits_str) == 10:
-        return f'+1-{digits_str[0:3]}-{digits_str[3:6]}-{digits_str[6:]}'
-
-    # Step 6: Reassemble groups into normalized format
-    normalized = []
-    for i, part in enumerate(groups):
-        if i == 0:
-            normalized.append(part if part.startswith('+') else f'+{part}')
-        else:
-            normalized.append(part)
-
-    result = '-'.join(normalized)
-
-    # Step 7: Only return normalized if it changed something meaningful
-    if result and result != phone:
-        return result
-
-    return phone  # fallback
+    return ''  # Your implementation here
 
 
 def extract_hashtags(text: str) -> List[str]:
@@ -227,11 +158,9 @@ def extract_hashtags(text: str) -> List[str]:
     # Hint: Hashtags start with # and can contain letters, numbers, and underscores
     # Return the hashtag text without the # symbol
     
-    pattern = r'(?<![\w@])#([A-Za-z0-9_]+)'
-    hashtags = re.findall(pattern, text)
-    
-    # Filter: must contain at least one letter (not just numbers)
-    return [hashtag for hashtag in hashtags if re.search(r'[A-Za-z]', hashtag)]
+    pattern = r''  # Your regex pattern here
+    # TODO: Replace empty pattern with your implementation
+    return []
 
 
 def extract_mentions(text: str) -> List[str]:
@@ -578,6 +507,4 @@ if __name__ == "__main__":
     print("Emojis:", extract_emojis(sample_text))
     print("Dates:", extract_dates(sample_text))
     print("Times:", extract_times(sample_text))
-    print("Addresses:", extract_addresses(sample_text))
-    print("Addresses:", extract_addresses(sample_text))
     print("Addresses:", extract_addresses(sample_text))
